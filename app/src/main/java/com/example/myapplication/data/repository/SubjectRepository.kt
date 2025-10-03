@@ -16,9 +16,7 @@ class SubjectRepository @Inject constructor(
     private val topicDao: TopicDao
 ) {
     fun getAllSubjects(): Flow<List<Subject>> {
-        return subjectDao.getAllSubjects().combine(
-            topicDao.getTopicsBySubjectId(0) // This will be handled differently
-        ) { subjects, _ ->
+        return subjectDao.getAllSubjects().map { subjects ->
             subjects.map { subjectEntity ->
                 Subject(
                     id = subjectEntity.id,

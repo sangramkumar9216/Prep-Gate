@@ -9,7 +9,6 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.example.myapplication.MainActivity
-import com.example.myapplication.R
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -53,7 +52,7 @@ class PomodoroNotificationManager @Inject constructor(
         )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("Study Session Complete! 🎉")
             .setContentText("Time for a break! You've earned it.")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -76,7 +75,7 @@ class PomodoroNotificationManager @Inject constructor(
         )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("Break Time Over! ⏰")
             .setContentText("Ready to get back to studying?")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)

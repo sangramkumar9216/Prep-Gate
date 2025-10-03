@@ -416,7 +416,7 @@ fun RecentTasksCard(todos: List<Todo>) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Default.Assignment,
+                    imageVector = Icons.Default.List,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )

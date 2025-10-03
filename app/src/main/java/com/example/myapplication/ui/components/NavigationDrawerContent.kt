@@ -27,9 +27,9 @@ fun NavigationDrawerContent(
     modifier: Modifier = Modifier
 ) {
     val navigationItems = listOf(
-        NavigationItem(Screen.Dashboard, "Dashboard", Icons.Default.Dashboard),
+        NavigationItem(Screen.Dashboard, "Dashboard", Icons.Default.Home),
         NavigationItem(Screen.SubjectTracker, "Subject Tracker", Icons.Default.Book),
-        NavigationItem(Screen.TodoList, "To-Do List", Icons.Default.Checklist),
+        NavigationItem(Screen.TodoList, "To-Do List", Icons.Default.List),
         NavigationItem(Screen.RevisionPlanner, "Revision Planner", Icons.Default.Schedule),
         NavigationItem(Screen.ErrorBook, "Error Book", Icons.Default.Error),
         NavigationItem(Screen.Settings, "Settings", Icons.Default.Settings)

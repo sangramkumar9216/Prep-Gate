@@ -21,9 +21,7 @@ class DatabaseInitializer @Inject constructor(
     fun initializeDatabase(scope: CoroutineScope) {
         scope.launch {
             // Check if subjects already exist
-            val existingSubjects = subjectRepository.getAllSubjects()
-                .stateIn(scope, SharingStarted.WhileSubscribed(5000), emptyList())
-                .value
+            val existingSubjects = subjectRepository.getAllSubjects().first()
             
             if (existingSubjects.isEmpty()) {
                 seedInitialData()

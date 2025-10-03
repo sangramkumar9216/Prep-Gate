@@ -160,7 +160,7 @@ fun EmptyStateCard(filterType: TodoFilterType) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
-                imageVector = Icons.Default.Checklist,
+                imageVector = Icons.Default.List,
                 contentDescription = null,
                 modifier = Modifier.size(64.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant

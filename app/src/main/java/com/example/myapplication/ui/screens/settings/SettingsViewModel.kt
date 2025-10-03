@@ -53,79 +53,73 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun exportData(): File {
-        val exportData = JSONObject()
-        
-        // Export subjects
-        val subjects = subjectRepository.getAllSubjects().stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        ).value
-        
-        val subjectsArray = JSONArray()
-        subjects.forEach { subject ->
-            val subjectJson = JSONObject()
-            subjectJson.put("id", subject.id)
-            subjectJson.put("name", subject.name)
-            subjectJson.put("color", subject.color)
-            subjectJson.put("progress", subject.progress)
-            subjectJson.put("totalTopics", subject.totalTopics)
-            subjectJson.put("completedTopics", subject.completedTopics)
-            subjectsArray.put(subjectJson)
+    fun exportData() {
+        viewModelScope.launch {
+            try {
+                val exportData = JSONObject()
+                
+                // Export subjects
+                val subjects = subjectRepository.getAllSubjects().first()
+                
+                val subjectsArray = JSONArray()
+                subjects.forEach { subject ->
+                    val subjectJson = JSONObject()
+                    subjectJson.put("id", subject.id)
+                    subjectJson.put("name", subject.name)
+                    subjectJson.put("color", subject.color)
+                    subjectJson.put("progress", subject.progress)
+                    subjectJson.put("totalTopics", subject.totalTopics)
+                    subjectJson.put("completedTopics", subject.completedTopics)
+                    subjectsArray.put(subjectJson)
+                }
+                exportData.put("subjects", subjectsArray)
+
+                // Export todos
+                val todos = todoRepository.getAllTodos().first()
+                
+                val todosArray = JSONArray()
+                todos.forEach { todo ->
+                    val todoJson = JSONObject()
+                    todoJson.put("id", todo.id)
+                    todoJson.put("title", todo.title)
+                    todoJson.put("description", todo.description)
+                    todoJson.put("subjectId", todo.subjectId)
+                    todoJson.put("priority", todo.priority.name)
+                    todoJson.put("isDone", todo.isDone)
+                    todoJson.put("createdAt", todo.createdAt)
+                    todoJson.put("dueDate", todo.dueDate)
+                    todosArray.put(todoJson)
+                }
+                exportData.put("todos", todosArray)
+
+                // Export goals
+                val goals = goalRepository.getAllGoals().first()
+                
+                val goalsArray = JSONArray()
+                goals.forEach { goal ->
+                    val goalJson = JSONObject()
+                    goalJson.put("id", goal.id)
+                    goalJson.put("title", goal.title)
+                    goalJson.put("isDoneForDate", goal.isDoneForDate)
+                    goalJson.put("createdAt", goal.createdAt)
+                    goalsArray.put(goalJson)
+                }
+                exportData.put("goals", goalsArray)
+
+                // Add export metadata
+                exportData.put("exportDate", System.currentTimeMillis())
+                exportData.put("appVersion", "1.0")
+
+                // Save to file
+                val fileName = "gate_prep_export_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.json"
+                val file = File(context.getExternalFilesDir(null), fileName)
+                file.writeText(exportData.toString())
+
+                // TODO: Show success message or trigger share intent
+            } catch (e: Exception) {
+                // TODO: Handle error
+            }
         }
-        exportData.put("subjects", subjectsArray)
-
-        // Export todos
-        val todos = todoRepository.getAllTodos().stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        ).value
-        
-        val todosArray = JSONArray()
-        todos.forEach { todo ->
-            val todoJson = JSONObject()
-            todoJson.put("id", todo.id)
-            todoJson.put("title", todo.title)
-            todoJson.put("description", todo.description)
-            todoJson.put("subjectId", todo.subjectId)
-            todoJson.put("priority", todo.priority.name)
-            todoJson.put("isDone", todo.isDone)
-            todoJson.put("createdAt", todo.createdAt)
-            todoJson.put("dueDate", todo.dueDate)
-            todosArray.put(todoJson)
-        }
-        exportData.put("todos", todosArray)
-
-        // Export goals
-        val goals = goalRepository.getAllGoals().stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        ).value
-        
-        val goalsArray = JSONArray()
-        goals.forEach { goal ->
-            val goalJson = JSONObject()
-            goalJson.put("id", goal.id)
-            goalJson.put("title", goal.title)
-            goalJson.put("isDoneForDate", goal.isDoneForDate)
-            goalJson.put("createdAt", goal.createdAt)
-            goalsArray.put(goalJson)
-        }
-        exportData.put("goals", goalsArray)
-
-        // Add export metadata
-        exportData.put("exportDate", System.currentTimeMillis())
-        exportData.put("appVersion", "1.0")
-
-        // Save to file
-        val fileName = "gate_prep_export_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.json"
-        val file = File(context.getExternalFilesDir(null), fileName)
-        file.writeText(exportData.toString())
-
-        return file
     }
 
     fun resetAllData() {
