@@ -11,15 +11,15 @@ import javax.inject.Inject
 
 @HiltAndroidApp
 class GatePrepApplication : Application() {
-    
+
     @Inject
     lateinit var databaseInitializer: DatabaseInitializer
-    
+
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    
+
     override fun onCreate() {
         super.onCreate()
-        
+
         // Initialize database with seed data
         applicationScope.launch {
             databaseInitializer.initializeDatabase(applicationScope)

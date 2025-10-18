@@ -1,6 +1,5 @@
 package com.example.myapplication.ui.screens.settings
 
-import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -9,7 +8,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -21,11 +19,11 @@ import java.util.*
 fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
-    val context = LocalContext.current
-    val isDarkTheme by viewModel.isDarkTheme.collectAsState()
-    val gateExamDate by viewModel.gateExamDate.collectAsState()
-    val pomodoroStudyDuration by viewModel.pomodoroStudyDuration.collectAsState()
-    val pomodoroBreakDuration by viewModel.pomodoroBreakDuration.collectAsState()
+    val isDarkTheme by viewModel.isDarkTheme.collectAsState(initial = false)
+    val gateExamDate by viewModel.gateExamDate.collectAsState(initial = System.currentTimeMillis())
+    val pomodoroStudyDuration by viewModel.pomodoroStudyDuration.collectAsState(initial = 25L)
+    val pomodoroBreakDuration by viewModel.pomodoroBreakDuration.collectAsState(initial = 5L)
+    val gateExamTitle by viewModel.gateExamTitle.collectAsState(initial = "GATE CSE 2026")
 
     var showDatePicker by remember { mutableStateOf(false) }
     var showPomodoroSettings by remember { mutableStateOf(false) }
@@ -46,7 +44,6 @@ fun SettingsScreen(
         }
 
         item {
-            // Theme Settings
             SettingsCard(
                 title = "Appearance",
                 icon = Icons.Default.ColorLens
@@ -69,34 +66,44 @@ fun SettingsScreen(
         }
 
         item {
-            // GATE Exam Date
+            var currentTitle by remember(gateExamTitle) { mutableStateOf(gateExamTitle) }
             SettingsCard(
-                title = "GATE Exam",
-                icon = Icons.Default.Schedule
+                title = "Set Exam Name And Date",
+                icon = Icons.Default.CalendarToday
             ) {
-                Column {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Exam Date",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        TextButton(onClick = { showDatePicker = true }) {
-                            Text(
-                                text = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-                                    .format(Date(gateExamDate))
-                            )
+                OutlinedTextField(
+                    value = currentTitle,
+                    onValueChange = { currentTitle = it },
+                    label = { Text("Exam Title") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        IconButton(onClick = { viewModel.updateGateExamTitle(currentTitle) }) {
+                            Icon(Icons.Default.Done, contentDescription = "Save Title")
                         }
+                    }
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Exam Date",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    TextButton(onClick = { showDatePicker = true }) {
+                        Text(
+                            text = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+                                .format(Date(gateExamDate))
+                        )
                     }
                 }
             }
         }
 
         item {
-            // Pomodoro Settings
             SettingsCard(
                 title = "Pomodoro Timer",
                 icon = Icons.Default.Timer
@@ -112,9 +119,9 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.bodyLarge
                         )
                     }
-                    
+
                     Spacer(modifier = Modifier.height(8.dp))
-                    
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -125,9 +132,9 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.bodyLarge
                         )
                     }
-                    
+
                     Spacer(modifier = Modifier.height(8.dp))
-                    
+
                     TextButton(onClick = { showPomodoroSettings = true }) {
                         Text("Customize")
                     }
@@ -136,7 +143,6 @@ fun SettingsScreen(
         }
 
         item {
-            // Data Management
             SettingsCard(
                 title = "Data Management",
                 icon = Icons.Default.Folder
@@ -153,17 +159,15 @@ fun SettingsScreen(
                         )
                         IconButton(
                             onClick = {
-                                // Launch coroutine to handle async export
-                                // Note: In a real app, you'd want to show loading state
                                 viewModel.exportData()
                             }
                         ) {
                             Icon(Icons.Default.Share, contentDescription = "Export")
                         }
                     }
-                    
+
                     Spacer(modifier = Modifier.height(8.dp))
-                    
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -189,30 +193,21 @@ fun SettingsScreen(
         }
 
         item {
-            // App Info
             SettingsCard(
                 title = "App Information",
                 icon = Icons.Default.Info
             ) {
                 Column {
                     Text(
-                        text = "GATE CSE 2026 Prep",
+                        text = "GATE Prep",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium
                     )
-                    
+
                     Spacer(modifier = Modifier.height(4.dp))
-                    
+
                     Text(
                         text = "Version 1.0",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    
-                    Spacer(modifier = Modifier.height(4.dp))
-                    
-                    Text(
-                        text = "Built with Kotlin & Jetpack Compose",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -221,7 +216,6 @@ fun SettingsScreen(
         }
     }
 
-    // Date Picker Dialog
     if (showDatePicker) {
         DatePickerDialog(
             initialDate = gateExamDate,
@@ -233,7 +227,6 @@ fun SettingsScreen(
         )
     }
 
-    // Pomodoro Settings Dialog
     if (showPomodoroSettings) {
         PomodoroSettingsDialog(
             studyDuration = pomodoroStudyDuration,
@@ -246,12 +239,11 @@ fun SettingsScreen(
         )
     }
 
-    // Reset Confirmation Dialog
     if (showResetDialog) {
         AlertDialog(
             onDismissRequest = { showResetDialog = false },
             title = { Text("Reset All Data") },
-            text = { 
+            text = {
                 Text("Are you sure you want to delete all your data? This action cannot be undone.")
             },
             confirmButton = {
@@ -300,48 +292,32 @@ fun SettingsCard(
                     fontWeight = FontWeight.Medium
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             content()
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DatePickerDialog(
     initialDate: Long,
     onDismiss: () -> Unit,
     onDateSelected: (Long) -> Unit
 ) {
-    var selectedDate by remember { mutableStateOf(initialDate) }
+    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialDate)
 
-    AlertDialog(
+    androidx.compose.material3.DatePickerDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Select GATE Exam Date") },
-        text = {
-            Column {
-                Text(
-                    text = "Choose the date for your GATE CSE 2026 exam",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-                
-                // Simple date input for now - in a real app, you'd use a proper date picker
-                OutlinedTextField(
-                    value = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                        .format(Date(selectedDate)),
-                    onValueChange = { /* Handle date input */ },
-                    label = { Text("Date (YYYY-MM-DD)") },
-                    readOnly = true
-                )
-            }
-        },
         confirmButton = {
             TextButton(
-                onClick = { onDateSelected(selectedDate) }
+                onClick = {
+                    datePickerState.selectedDateMillis?.let { onDateSelected(it) }
+                }
             ) {
-                Text("Set Date")
+                Text("OK")
             }
         },
         dismissButton = {
@@ -349,7 +325,9 @@ fun DatePickerDialog(
                 Text("Cancel")
             }
         }
-    )
+    ) {
+        DatePicker(state = datePickerState)
+    }
 }
 
 @Composable
@@ -373,9 +351,9 @@ fun PomodoroSettingsDialog(
                     label = { Text("Study Duration (minutes)") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 OutlinedTextField(
                     value = breakMinutes,
                     onValueChange = { breakMinutes = it },

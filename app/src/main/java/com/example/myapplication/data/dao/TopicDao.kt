@@ -7,6 +7,11 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TopicDao {
+
+    // It returns a flow of all topics, which will emit a new list whenever any topic changes.
+    @Query("SELECT * FROM topics")
+    fun getAllTopics(): Flow<List<TopicEntity>>
+
     @Query("SELECT * FROM topics WHERE subjectId = :subjectId ORDER BY title ASC")
     fun getTopicsBySubjectId(subjectId: Long): Flow<List<TopicEntity>>
 

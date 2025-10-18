@@ -1,37 +1,48 @@
 package com.example.myapplication.ui.screens.dashboard
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.myapplication.domain.model.Goal
 import com.example.myapplication.domain.model.Subject
 import com.example.myapplication.domain.model.Todo
-import com.example.myapplication.domain.model.Goal
 import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
-    viewModel: DashboardViewModel = hiltViewModel()
+    viewModel: DashboardViewModel = hiltViewModel(),
+    onMenuClick: () -> Unit
 ) {
-    val pomodoroState by viewModel.pomodoroState.collectAsState()
-    val timeRemaining by viewModel.timeRemaining.collectAsState()
-    val isStudySession by viewModel.isStudySession.collectAsState()
-    val subjects by viewModel.subjects.collectAsState()
-    val pendingTodos by viewModel.pendingTodos.collectAsState()
-    val todayGoals by viewModel.todayGoals.collectAsState()
-    val gateExamDate by viewModel.gateExamDate.collectAsState()
+    val pomodoroState by viewModel.pomodoroState.collectAsState(initial = PomodoroState.IDLE)
+    val timeRemaining by viewModel.timeRemaining.collectAsState(initial = 0L)
+    val isStudySession by viewModel.isStudySession.collectAsState(initial = true)
+    val subjects by viewModel.subjects.collectAsState(initial = emptyList())
+    val pendingTodos by viewModel.pendingTodos.collectAsState(initial = emptyList())
+    val todayGoals by viewModel.todayGoals.collectAsState(initial = emptyList())
+    val gateExamDate by viewModel.gateExamDate.collectAsState(initial = System.currentTimeMillis())
+    val gateExamTitle by viewModel.gateExamTitle.collectAsState(initial = "GATE CSE 2026")
+
+    val studyDuration by viewModel.pomodoroStudyDuration.collectAsState(initial = 25L)
+    val breakDuration by viewModel.pomodoroBreakDuration.collectAsState(initial = 5L)
+    val totalPomodoroTime = if (isStudySession) studyDuration * 60 * 1000 else breakDuration * 60 * 1000
 
     LaunchedEffect(Unit) {
         viewModel.initializePomodoro()
@@ -44,30 +55,16 @@ fun DashboardScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            // Header with drawer button
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Dashboard",
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            Header(onMenuClick = onMenuClick)
         }
-
         item {
-            // GATE Countdown Card
-            GateCountdownCard(gateExamDate = gateExamDate)
+            GateCountdownCard(gateExamTitle = gateExamTitle, gateExamDate = gateExamDate)
         }
-
         item {
-            // Pomodoro Timer Card
             PomodoroTimerCard(
                 pomodoroState = pomodoroState,
                 timeRemaining = timeRemaining,
+                totalTime = totalPomodoroTime,
                 isStudySession = isStudySession,
                 onStart = { viewModel.startPomodoro() },
                 onPause = { viewModel.pausePomodoro() },
@@ -77,98 +74,110 @@ fun DashboardScreen(
         }
 
         item {
-            // Weekly Goals Card
-            WeeklyGoalsCard(goals = todayGoals)
-        }
-
-        item {
-            // Subject Progress Overview
             SubjectProgressCard(subjects = subjects)
         }
-
         item {
-            // Recent Tasks Card
             RecentTasksCard(todos = pendingTodos.take(5))
         }
-
         item {
-            // Motivational Quote Card
             MotivationalQuoteCard()
         }
     }
 }
 
 @Composable
-fun GateCountdownCard(gateExamDate: Long) {
+fun Header(onMenuClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Dashboard",
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold
+        )
+        IconButton(onClick = onMenuClick) {
+            Icon(imageVector = Icons.Default.Menu, contentDescription = "Open Drawer")
+        }
+    }
+}
+
+@Composable
+fun GateCountdownCard(gateExamTitle: String, gateExamDate: Long) {
     val currentTime = System.currentTimeMillis()
     val timeDiff = gateExamDate - currentTime
-    
-    val days = timeDiff / (1000 * 60 * 60 * 24)
-    val hours = (timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-    val minutes = (timeDiff % (1000 * 60 * 60)) / (1000 * 60)
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
-    ) {
+    val days = (timeDiff / (1000 * 60 * 60 * 24)).coerceAtLeast(0)
+    val hours = ((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)).coerceAtLeast(0)
+    val minutes = ((timeDiff % (1000 * 60 * 60)) / (1000 * 60)).coerceAtLeast(0)
+
+    val gradientBrush = Brush.horizontalGradient(
+        colors = listOf(Color(0xFF6A11CB), Color(0xFF2575FC))
+    )
+
+    Card(elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(gradientBrush)
+                .padding(16.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Schedule,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.AccessTime, contentDescription = null, tint = Color.White)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "GATE CSE 2026",
+                    text = gateExamTitle,
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
                 )
             }
-            
             Spacer(modifier = Modifier.height(12.dp))
-            
             Text(
                 text = "Time Remaining",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = Color.White.copy(alpha = 0.8f)
             )
-            
             Spacer(modifier = Modifier.height(8.dp))
-            
             Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.Bottom
             ) {
-                CountdownItem("Days", days.toString())
-                CountdownItem("Hours", hours.toString())
-                CountdownItem("Minutes", minutes.toString())
+                CountdownItem(
+                    label = "Days",
+                    value = days.toString(),
+                    valueColor = Color.White,
+                    labelColor = Color.White.copy(alpha = 0.8f)
+                )
+                CountdownItem(
+                    label = "Hours",
+                    value = hours.toString(),
+                    valueColor = Color.White,
+                    labelColor = Color.White.copy(alpha = 0.8f)
+                )
+                CountdownItem(
+                    label = "Minutes",
+                    value = minutes.toString(),
+                    valueColor = Color.White,
+                    labelColor = Color.White.copy(alpha = 0.8f)
+                )
             }
         }
     }
 }
 
 @Composable
-fun CountdownItem(label: String, value: String) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+fun CountdownItem(
+    label: String,
+    value: String,
+    valueColor: Color = MaterialTheme.colorScheme.primary,
+    labelColor: Color = MaterialTheme.colorScheme.onSurfaceVariant
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = valueColor)
+        Text(text = label, style = MaterialTheme.typography.bodySmall, color = labelColor)
     }
 }
 
@@ -176,6 +185,7 @@ fun CountdownItem(label: String, value: String) {
 fun PomodoroTimerCard(
     pomodoroState: PomodoroState,
     timeRemaining: Long,
+    totalTime: Long,
     isStudySession: Boolean,
     onStart: () -> Unit,
     onPause: () -> Unit,
@@ -186,81 +196,67 @@ fun PomodoroTimerCard(
     val seconds = (timeRemaining % (1000 * 60)) / 1000
     val timeText = String.format("%02d:%02d", minutes, seconds)
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isStudySession) 
-                MaterialTheme.colorScheme.secondaryContainer 
-            else 
-                MaterialTheme.colorScheme.tertiaryContainer
-        )
-    ) {
+    val cardBrush = if (isStudySession) {
+        Brush.verticalGradient(listOf(Color(0xBF72CF), Color(0xFFA5D6A7)))
+    } else {
+        Brush.verticalGradient(listOf(Color(0xFFE3F2FD), Color(0xFF90CAF9)))
+    }
+
+    Card(elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(cardBrush)
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = if (isStudySession) "Study Time" else "Break Time",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
-            
             Spacer(modifier = Modifier.height(16.dp))
-            
             Text(
                 text = timeText,
                 style = MaterialTheme.typography.displayMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
-            
             Spacer(modifier = Modifier.height(16.dp))
-            
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                val buttonWidth = 120.dp
                 when (pomodoroState) {
-                    PomodoroState.IDLE -> {
-                        Button(onClick = onStart) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = null)
-                            Spacer(modifier = Modifier.width(4.dp))
+                    PomodoroState.IDLE, PomodoroState.COMPLETED -> {
+                        Button(onClick = onStart, modifier = Modifier.width(buttonWidth)) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = "Start")
+                            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                             Text("Start")
                         }
                     }
                     PomodoroState.RUNNING -> {
-                        Button(onClick = onPause) {
-                            Icon(Icons.Default.Pause, contentDescription = null)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Pause")
-                        }
-                        OutlinedButton(onClick = onReset) {
-                            Icon(Icons.Default.Stop, contentDescription = null)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Reset")
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Button(onClick = onPause, modifier = Modifier.width(buttonWidth)) {
+                                Icon(Icons.Default.Pause, contentDescription = "Pause")
+                            }
+                            OutlinedButton(onClick = onReset) {
+                                Icon(Icons.Default.Stop, contentDescription = "Reset")
+                            }
                         }
                     }
                     PomodoroState.PAUSED -> {
-                        Button(onClick = onResume) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = null)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Resume")
-                        }
-                        OutlinedButton(onClick = onReset) {
-                            Icon(Icons.Default.Stop, contentDescription = null)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Reset")
-                        }
-                    }
-                    PomodoroState.COMPLETED -> {
-                        Button(onClick = onStart) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = null)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Next Session")
-                        }
-                        OutlinedButton(onClick = onReset) {
-                            Icon(Icons.Default.Stop, contentDescription = null)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Reset")
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Button(onClick = onResume, modifier = Modifier.width(buttonWidth)) {
+                                Icon(Icons.Default.PlayArrow, contentDescription = "Resume")
+
+                            }
+                            OutlinedButton(onClick = onReset) {
+                                Icon(Icons.Default.Stop, contentDescription = "Reset")
+                            }
                         }
                     }
                 }
@@ -281,7 +277,7 @@ fun WeeklyGoalsCard(goals: List<Goal>) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Default.Checklist,
+                    imageVector = Icons.Default.List,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -292,9 +288,7 @@ fun WeeklyGoalsCard(goals: List<Goal>) {
                     fontWeight = FontWeight.Bold
                 )
             }
-            
             Spacer(modifier = Modifier.height(12.dp))
-            
             if (goals.isEmpty()) {
                 Text(
                     text = "No goals set for today",
@@ -308,7 +302,7 @@ fun WeeklyGoalsCard(goals: List<Goal>) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(
-                            checked = false, // TODO: Implement goal completion tracking
+                            checked = false,
                             onCheckedChange = { /* TODO */ }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -346,9 +340,7 @@ fun SubjectProgressCard(subjects: List<Subject>) {
                     fontWeight = FontWeight.Bold
                 )
             }
-            
             Spacer(modifier = Modifier.height(12.dp))
-            
             if (subjects.isEmpty()) {
                 Text(
                     text = "No subjects available",
@@ -385,17 +377,12 @@ fun SubjectProgressItem(subject: Subject) {
                 color = MaterialTheme.colorScheme.primary
             )
         }
-        
         Spacer(modifier = Modifier.height(4.dp))
-        
         LinearProgressIndicator(
-            progress = subject.progress,
+            progress = { subject.progress },
             modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.primary
         )
-        
         Spacer(modifier = Modifier.height(4.dp))
-        
         Text(
             text = "${subject.completedTopics}/${subject.totalTopics} topics completed",
             style = MaterialTheme.typography.bodySmall,
@@ -427,9 +414,7 @@ fun RecentTasksCard(todos: List<Todo>) {
                     fontWeight = FontWeight.Bold
                 )
             }
-            
             Spacer(modifier = Modifier.height(12.dp))
-            
             if (todos.isEmpty()) {
                 Text(
                     text = "No pending tasks",
@@ -444,7 +429,7 @@ fun RecentTasksCard(todos: List<Todo>) {
                     ) {
                         Checkbox(
                             checked = todo.isDone,
-                            onCheckedChange = { /* TODO: Implement task completion */ }
+                            onCheckedChange = { /* TODO */ }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
@@ -480,22 +465,18 @@ fun MotivationalQuoteCard() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
-                imageVector = Icons.Default.Lightbulb,
+                imageVector = Icons.Default.TipsAndUpdates,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(32.dp)
             )
-            
             Spacer(modifier = Modifier.height(8.dp))
-            
             Text(
                 text = "Success is the sum of small efforts repeated day in and day out.",
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium
             )
-            
             Spacer(modifier = Modifier.height(4.dp))
-            
             Text(
                 text = "Keep going! You've got this! 💪",
                 style = MaterialTheme.typography.bodyMedium,

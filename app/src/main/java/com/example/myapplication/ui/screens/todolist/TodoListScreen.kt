@@ -2,6 +2,7 @@ package com.example.myapplication.ui.screens.todolist
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -9,11 +10,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.myapplication.data.entity.TodoPriority
+import com.example.myapplication.domain.model.Subject
 import com.example.myapplication.domain.model.Todo
 import java.text.SimpleDateFormat
 import java.util.*
@@ -23,9 +24,10 @@ import java.util.*
 fun TodoListScreen(
     viewModel: TodoListViewModel = hiltViewModel()
 ) {
-    val todos by viewModel.todos.collectAsState()
-    val subjects by viewModel.subjects.collectAsState()
-    val filterType by viewModel.filterType.collectAsState()
+    // FIX 1: Added initial values to all collectAsState calls
+    val todos by viewModel.todos.collectAsState(initial = emptyList())
+    val subjects by viewModel.subjects.collectAsState(initial = emptyList())
+    val filterType by viewModel.filterType.collectAsState(initial = TodoFilterType.ALL)
 
     var showAddTodoDialog by remember { mutableStateOf(false) }
     var showEditTodoDialog by remember { mutableStateOf(false) }
@@ -47,7 +49,7 @@ fun TodoListScreen(
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold
             )
-            
+
             IconButton(onClick = { showAddTodoDialog = true }) {
                 Icon(Icons.Default.Add, contentDescription = "Add Todo")
             }
@@ -108,7 +110,7 @@ fun TodoListScreen(
         AddEditTodoDialog(
             todo = selectedTodo,
             subjects = subjects,
-            onDismiss = { 
+            onDismiss = {
                 showEditTodoDialog = false
                 selectedTodo = null
             },
@@ -165,9 +167,9 @@ fun EmptyStateCard(filterType: TodoFilterType) {
                 modifier = Modifier.size(64.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             Text(
                 text = when (filterType) {
                     TodoFilterType.ALL -> "No tasks yet"
@@ -179,9 +181,9 @@ fun EmptyStateCard(filterType: TodoFilterType) {
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             Text(
                 text = when (filterType) {
                     TodoFilterType.ALL -> "Add your first task to get started"
@@ -220,9 +222,9 @@ fun TodoCard(
                     checked = todo.isDone,
                     onCheckedChange = { onToggleCompletion() }
                 )
-                
+
                 Spacer(modifier = Modifier.width(8.dp))
-                
+
                 Column(
                     modifier = Modifier.weight(1f)
                 ) {
@@ -230,12 +232,12 @@ fun TodoCard(
                         text = todo.title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
-                        color = if (todo.isDone) 
-                            MaterialTheme.colorScheme.onSurfaceVariant 
-                        else 
+                        color = if (todo.isDone)
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        else
                             MaterialTheme.colorScheme.onSurface
                     )
-                    
+
                     if (todo.description != null) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
@@ -244,26 +246,26 @@ fun TodoCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    
+
                     Spacer(modifier = Modifier.height(8.dp))
-                    
+
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         PriorityChip(priority = todo.priority)
-                        
+
                         if (todo.dueDate != null) {
                             Spacer(modifier = Modifier.width(8.dp))
                             DueDateChip(dueDate = todo.dueDate)
                         }
-                        
+
                         if (todo.subjectName != null) {
                             Spacer(modifier = Modifier.width(8.dp))
                             SubjectChip(subjectName = todo.subjectName)
                         }
                     }
                 }
-                
+
                 Row {
                     IconButton(onClick = onEdit) {
                         Icon(
@@ -272,7 +274,7 @@ fun TodoCard(
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
-                    
+
                     IconButton(onClick = { showDeleteDialog = true }) {
                         Icon(
                             Icons.Default.Delete,
@@ -317,7 +319,7 @@ fun PriorityChip(priority: TodoPriority) {
         TodoPriority.MEDIUM -> MaterialTheme.colorScheme.primary to "Medium"
         TodoPriority.LOW -> MaterialTheme.colorScheme.onSurfaceVariant to "Low"
     }
-    
+
     Surface(
         color = color.copy(alpha = 0.1f),
         shape = MaterialTheme.shapes.small
@@ -335,7 +337,7 @@ fun PriorityChip(priority: TodoPriority) {
 fun DueDateChip(dueDate: Long) {
     val dateFormat = SimpleDateFormat("MMM dd", Locale.getDefault())
     val dateText = dateFormat.format(Date(dueDate))
-    
+
     Surface(
         color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f),
         shape = MaterialTheme.shapes.small
@@ -345,7 +347,8 @@ fun DueDateChip(dueDate: Long) {
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
         ) {
             Icon(
-                Icons.Default.Schedule,
+                // FIX 2: Replaced Icons.Default.Schedule with a valid icon
+                Icons.Default.AccessTime,
                 contentDescription = null,
                 modifier = Modifier.size(12.dp),
                 tint = MaterialTheme.colorScheme.secondary
@@ -378,7 +381,7 @@ fun SubjectChip(subjectName: String) {
 @Composable
 fun AddEditTodoDialog(
     todo: Todo? = null,
-    subjects: List<com.example.myapplication.domain.model.Subject>,
+    subjects: List<Subject>,
     onDismiss: () -> Unit,
     onConfirm: (String, String?, Long?, TodoPriority, Long?) -> Unit
 ) {
@@ -400,9 +403,9 @@ fun AddEditTodoDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
@@ -411,16 +414,16 @@ fun AddEditTodoDialog(
                     maxLines = 3,
                     modifier = Modifier.fillMaxWidth()
                 )
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 // Priority Selection
                 Text(
                     text = "Priority",
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
-                
+
                 Row {
                     TodoPriority.values().forEach { priority ->
                         FilterChip(
@@ -435,12 +438,12 @@ fun AddEditTodoDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { 
+                onClick = {
                     onConfirm(
-                        title, 
-                        description.ifBlank { null }, 
-                        selectedSubjectId, 
-                        selectedPriority, 
+                        title,
+                        description.ifBlank { null },
+                        selectedSubjectId,
+                        selectedPriority,
                         dueDate
                     )
                 },

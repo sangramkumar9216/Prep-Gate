@@ -4,20 +4,24 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.text.SimpleDateFormat
+import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
 
+// THIS IS THE FIX: The dataStore definition needs to be at the top level of the file.
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "user_preferences")
 
 @Singleton
 class PreferencesManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
+    // The class uses the top-level dataStore
     private val dataStore = context.dataStore
 
     val isDarkTheme: Flow<Boolean> = dataStore.data.map { preferences ->
@@ -28,12 +32,24 @@ class PreferencesManager @Inject constructor(
         preferences[UserPreferences.GATE_EXAM_DATE] ?: getDefaultGateDate()
     }
 
+    val gateExamTitle: Flow<String> = dataStore.data.map { preferences ->
+        preferences[UserPreferences.GATE_EXAM_TITLE] ?: "GATE CSE 2026"
+    }
+
     val pomodoroStudyDuration: Flow<Long> = dataStore.data.map { preferences ->
-        preferences[UserPreferences.POMODORO_STUDY_DURATION] ?: 25L // 25 minutes
+        preferences[UserPreferences.POMODORO_STUDY_DURATION] ?: 25L
     }
 
     val pomodoroBreakDuration: Flow<Long> = dataStore.data.map { preferences ->
-        preferences[UserPreferences.POMODORO_BREAK_DURATION] ?: 5L // 5 minutes
+        preferences[UserPreferences.POMODORO_BREAK_DURATION] ?: 5L
+    }
+
+    val studyStreakCount: Flow<Int> = dataStore.data.map { preferences ->
+        preferences[UserPreferences.STUDY_STREAK_COUNT] ?: 0
+    }
+
+    val lastStudySessionDate: Flow<String> = dataStore.data.map { preferences ->
+        preferences[UserPreferences.LAST_STUDY_SESSION_DATE] ?: ""
     }
 
     suspend fun setDarkTheme(isDark: Boolean) {
@@ -48,6 +64,12 @@ class PreferencesManager @Inject constructor(
         }
     }
 
+    suspend fun setGateExamTitle(title: String) {
+        dataStore.edit { preferences ->
+            preferences[UserPreferences.GATE_EXAM_TITLE] = title
+        }
+    }
+
     suspend fun setPomodoroDurations(studyMinutes: Long, breakMinutes: Long) {
         dataStore.edit { preferences ->
             preferences[UserPreferences.POMODORO_STUDY_DURATION] = studyMinutes
@@ -55,11 +77,29 @@ class PreferencesManager @Inject constructor(
         }
     }
 
+    suspend fun updateStudyStreak() {
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        val lastSessionDate = lastStudySessionDate.first()
+
+        if (lastSessionDate != today) {
+            val calendar = Calendar.getInstance()
+            calendar.add(Calendar.DATE, -1)
+            val yesterday = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(calendar.time)
+
+            val currentStreak = studyStreakCount.first()
+            val newStreak = if (lastSessionDate == yesterday) currentStreak + 1 else 1
+
+            dataStore.edit { preferences ->
+                preferences[UserPreferences.STUDY_STREAK_COUNT] = newStreak
+                preferences[UserPreferences.LAST_STUDY_SESSION_DATE] = today
+            }
+        }
+    }
+
     private fun getDefaultGateDate(): Long {
-        // Default to February 1, 2026
-        val calendar = java.util.Calendar.getInstance()
-        calendar.set(2026, 1, 1, 0, 0, 0) // Month is 0-based, so 1 = February
-        calendar.set(java.util.Calendar.MILLISECOND, 0)
+        val calendar = Calendar.getInstance()
+        calendar.set(2026, 1, 1, 0, 0, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
         return calendar.timeInMillis
     }
 }

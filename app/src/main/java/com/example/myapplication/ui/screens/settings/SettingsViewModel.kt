@@ -4,9 +4,9 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.preferences.PreferencesManager
+import com.example.myapplication.data.repository.GoalRepository
 import com.example.myapplication.data.repository.SubjectRepository
 import com.example.myapplication.data.repository.TodoRepository
-import com.example.myapplication.data.repository.GoalRepository
 import com.example.myapplication.data.repository.TopicRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -33,11 +33,18 @@ class SettingsViewModel @Inject constructor(
     val gateExamDate = preferencesManager.gateExamDate
     val pomodoroStudyDuration = preferencesManager.pomodoroStudyDuration
     val pomodoroBreakDuration = preferencesManager.pomodoroBreakDuration
+    val gateExamTitle = preferencesManager.gateExamTitle
 
     fun toggleTheme() {
         viewModelScope.launch {
-            val currentTheme = isDarkTheme.value
+            val currentTheme = isDarkTheme.first()
             preferencesManager.setDarkTheme(!currentTheme)
+        }
+    }
+
+    fun updateGateExamTitle(title: String) {
+        viewModelScope.launch {
+            preferencesManager.setGateExamTitle(title)
         }
     }
 
@@ -57,10 +64,8 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val exportData = JSONObject()
-                
-                // Export subjects
+
                 val subjects = subjectRepository.getAllSubjects().first()
-                
                 val subjectsArray = JSONArray()
                 subjects.forEach { subject ->
                     val subjectJson = JSONObject()
@@ -74,9 +79,7 @@ class SettingsViewModel @Inject constructor(
                 }
                 exportData.put("subjects", subjectsArray)
 
-                // Export todos
                 val todos = todoRepository.getAllTodos().first()
-                
                 val todosArray = JSONArray()
                 todos.forEach { todo ->
                     val todoJson = JSONObject()
@@ -92,9 +95,7 @@ class SettingsViewModel @Inject constructor(
                 }
                 exportData.put("todos", todosArray)
 
-                // Export goals
                 val goals = goalRepository.getAllGoals().first()
-                
                 val goalsArray = JSONArray()
                 goals.forEach { goal ->
                     val goalJson = JSONObject()
@@ -106,18 +107,15 @@ class SettingsViewModel @Inject constructor(
                 }
                 exportData.put("goals", goalsArray)
 
-                // Add export metadata
                 exportData.put("exportDate", System.currentTimeMillis())
                 exportData.put("appVersion", "1.0")
 
-                // Save to file
                 val fileName = "gate_prep_export_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.json"
                 val file = File(context.getExternalFilesDir(null), fileName)
                 file.writeText(exportData.toString())
 
-                // TODO: Show success message or trigger share intent
             } catch (e: Exception) {
-                // TODO: Handle error
+                // Handle error
             }
         }
     }

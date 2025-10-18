@@ -15,16 +15,29 @@ class SubjectRepository @Inject constructor(
     private val subjectDao: SubjectDao,
     private val topicDao: TopicDao
 ) {
+    // --- THIS ENTIRE FUNCTION IS REWRITTEN ---
     fun getAllSubjects(): Flow<List<Subject>> {
-        return subjectDao.getAllSubjects().map { subjects ->
+        // 1. Get a flow of all subjects and a flow of all topics.
+        val subjectsFlow = subjectDao.getAllSubjects()
+        val topicsFlow = topicDao.getAllTopics()
+
+        // 2. Use `combine` to merge these two flows. The code inside the combine block
+        //    will automatically re-run whenever either the subjects list OR the topics list changes.
+        return combine(subjectsFlow, topicsFlow) { subjects, topics ->
             subjects.map { subjectEntity ->
+                // 3. For each subject, calculate its progress based on the latest list of topics.
+                val relevantTopics = topics.filter { it.subjectId == subjectEntity.id }
+                val totalTopics = relevantTopics.size
+                val completedTopics = relevantTopics.count { it.status == TopicStatus.COMPLETED }
+                val progress = if (totalTopics > 0) completedTopics.toFloat() / totalTopics else 0f
+
                 Subject(
                     id = subjectEntity.id,
                     name = subjectEntity.name,
                     color = subjectEntity.color,
-                    progress = 0f, // Will be calculated separately
-                    totalTopics = 0,
-                    completedTopics = 0
+                    progress = progress,
+                    totalTopics = totalTopics,
+                    completedTopics = completedTopics
                 )
             }
         }
@@ -34,9 +47,9 @@ class SubjectRepository @Inject constructor(
         val subject = subjectDao.getSubjectById(subjectId) ?: return null
         val totalTopics = topicDao.getTopicCountBySubjectId(subjectId)
         val completedTopics = topicDao.getTopicCountBySubjectIdAndStatus(subjectId, TopicStatus.COMPLETED)
-        
+
         val progress = if (totalTopics > 0) completedTopics.toFloat() / totalTopics else 0f
-        
+
         return Subject(
             id = subject.id,
             name = subject.name,
