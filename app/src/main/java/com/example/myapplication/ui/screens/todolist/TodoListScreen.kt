@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -259,6 +261,7 @@ fun TodoCard(
                             DueDateChip(dueDate = todo.dueDate)
                         }
 
+                        // This will now show the subject name!
                         if (todo.subjectName != null) {
                             Spacer(modifier = Modifier.width(8.dp))
                             SubjectChip(subjectName = todo.subjectName)
@@ -371,13 +374,14 @@ fun SubjectChip(subjectName: String) {
     ) {
         Text(
             text = subjectName,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme. typography.labelSmall,
             color = MaterialTheme.colorScheme.tertiary,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
         )
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class) // Add this annotation
 @Composable
 fun AddEditTodoDialog(
     todo: Todo? = null,
@@ -391,11 +395,16 @@ fun AddEditTodoDialog(
     var selectedPriority by remember { mutableStateOf(todo?.priority ?: TodoPriority.MEDIUM) }
     var dueDate by remember { mutableStateOf(todo?.dueDate) }
 
+    // State for the subject dropdown
+    var isSubjectMenuExpanded by remember { mutableStateOf(false) }
+    val selectedSubjectText = subjects.find { it.id == selectedSubjectId }?.name ?: "None"
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (todo == null) "Add Task" else "Edit Task") },
         text = {
-            Column {
+            // Make the column scrollable in case content is too long
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
@@ -404,7 +413,7 @@ fun AddEditTodoDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(16.dp)) // Increased spacing
 
                 OutlinedTextField(
                     value = description,
@@ -415,7 +424,59 @@ fun AddEditTodoDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(16.dp)) // Increased spacing
+
+                // --- NEW SUBJECT DROPDOWN ---
+                Text(
+                    text = "Subject",
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                ExposedDropdownMenuBox(
+                    expanded = isSubjectMenuExpanded,
+                    onExpandedChange = { isSubjectMenuExpanded = !isSubjectMenuExpanded },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = selectedSubjectText,
+                        onValueChange = {},
+                        readOnly = true,
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = isSubjectMenuExpanded)
+                        },
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = isSubjectMenuExpanded,
+                        onDismissRequest = { isSubjectMenuExpanded = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        // "None" option
+                        DropdownMenuItem(
+                            text = { Text("None") },
+                            onClick = {
+                                selectedSubjectId = null
+                                isSubjectMenuExpanded = false
+                            }
+                        )
+                        // Subject list options
+                        subjects.forEach { subject ->
+                            DropdownMenuItem(
+                                text = { Text(subject.name) },
+                                onClick = {
+                                    selectedSubjectId = subject.id
+                                    isSubjectMenuExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+                // --- END OF NEW SUBJECT DROPDOWN ---
+
+                Spacer(modifier = Modifier.height(16.dp)) // Increased spacing
 
                 // Priority Selection
                 Text(
@@ -442,7 +503,7 @@ fun AddEditTodoDialog(
                     onConfirm(
                         title,
                         description.ifBlank { null },
-                        selectedSubjectId,
+                        selectedSubjectId, // Pass the selected subject ID
                         selectedPriority,
                         dueDate
                     )
